@@ -1,0 +1,182 @@
+// =============================================
+// Prisma Schema - DIRIC Database
+// =============================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ---- Enums ----
+
+enum EventType {
+  mesa_trabajo
+  socializacion_externa
+  socializacion_interna
+}
+
+enum AttendanceStatus {
+  attended
+  absent
+  excused
+}
+
+enum EntitySector {
+  academia
+  empresa
+  estado
+  sociedad
+}
+
+enum RoleName {
+  admin
+  academicUnit
+  profesor
+}
+
+// ---- Models ----
+
+model User {
+  id         Int      @id @default(autoincrement())
+  name       String
+  phone      String
+  email      String   @unique
+  password   String
+  active     Boolean  @default(true)
+  created_at DateTime @default(now())
+
+  user_roles                    UserRole[]
+  professor_academic_units      ProfessorAcademicUnit[] @relation("ProfessorRelation")
+  academic_unit_professors      ProfessorAcademicUnit[] @relation("AcademicUnitRelation")
+  project_assignments           ProjectAssignment[]
+  events_created                Event[]                 @relation("EventCreator")
+  events_encargado              Event[]                 @relation("EventEncargado")
+  event_attendees               EventAttendee[]
+
+  @@map("users")
+}
+
+model Role {
+  id          Int      @id @default(autoincrement())
+  name        RoleName @unique
+  description String
+
+  user_roles UserRole[]
+
+  @@map("roles")
+}
+
+model UserRole {
+  user_id Int
+  role_id Int
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [role_id], references: [id], onDelete: Cascade)
+
+  @@id([user_id, role_id])
+  @@map("user_roles")
+}
+
+model ProfessorAcademicUnit {
+  professor_id     Int
+  academic_unit_id Int
+
+  professor     User @relation("ProfessorRelation", fields: [professor_id], references: [id], onDelete: Cascade)
+  academic_unit User @relation("AcademicUnitRelation", fields: [academic_unit_id], references: [id], onDelete: Cascade)
+
+  @@id([professor_id, academic_unit_id])
+  @@map("professor_academic_units")
+}
+
+model Country {
+  id   Int    @id @default(autoincrement())
+  code String @unique @db.VarChar(2)
+  name String
+
+  projects Project[]
+
+  @@map("countries")
+}
+
+model Project {
+  id          Int       @id @default(autoincrement())
+  country_id  Int
+  title       String
+  description String
+  status      String    @default("planificado")
+  start_date  String
+  deadline    String
+  end_date    String?
+  created_at  DateTime  @default(now())
+
+  country     Country            @relation(fields: [country_id], references: [id])
+  assignments ProjectAssignment[]
+  events      Event[]
+
+  @@map("projects")
+}
+
+model ProjectAssignment {
+  id              Int      @id @default(autoincrement())
+  project_id      Int
+  user_id         Int
+  role_in_project String
+  assigned_at     DateTime @default(now())
+
+  project Project @relation(fields: [project_id], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@map("project_assignments")
+}
+
+model Event {
+  id                    Int             @id @default(autoincrement())
+  project_id            Int
+  type                  EventType
+  title                 String
+  location              String?
+  description           String
+  entity_name           String?
+  entity_sector         EntitySector?
+  entity_contact_name   String?
+  entity_contact_email  String?
+  entity_contact_phone  String?
+  event_development     String?
+  activity_details      String?
+  results_summary       String?
+  agreements            String?
+  visit_purpose         String?
+  visit_justification   String?
+  conclusions           String          @default("")
+  start_datetime        DateTime
+  end_datetime          DateTime
+  created_by            Int
+  encargado_id          Int
+  created_at            DateTime        @default(now())
+
+  project    Project         @relation(fields: [project_id], references: [id], onDelete: Cascade)
+  creator    User            @relation("EventCreator", fields: [created_by], references: [id])
+  encargado  User            @relation("EventEncargado", fields: [encargado_id], references: [id])
+  attendees  EventAttendee[]
+
+  @@map("events")
+}
+
+model EventAttendee {
+  id            Int              @id @default(autoincrement())
+  event_id      Int
+  user_id       Int
+  status        AttendanceStatus @default(attended)
+  note          String           @default("")
+  registered_at DateTime         @default(now())
+
+  event Event @relation(fields: [event_id], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@map("event_attendees")
+}
