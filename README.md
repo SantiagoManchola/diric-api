@@ -50,6 +50,11 @@ npm run dev            # Modo desarrollo (hot reload)
 
 El API estará disponible en `http://localhost:3001`
 
+### Documentacion Swagger
+
+- UI interactiva: `http://localhost:3001/api/docs`
+- Especificacion OpenAPI (JSON): `http://localhost:3001/api/docs.json`
+
 ## Endpoints
 
 ### Auth
