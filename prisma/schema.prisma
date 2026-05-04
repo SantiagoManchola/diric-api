@@ -47,6 +47,7 @@ model User {
   phone      String
   email      String   @unique
   password   String
+  google_id  String?  @unique
   active     Boolean  @default(true)
   created_at DateTime @default(now())
 

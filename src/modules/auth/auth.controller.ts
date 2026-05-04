@@ -11,6 +11,16 @@ export async function login(req: Request, res: Response, next: NextFunction) {
   }
 }
 
+export async function googleLogin(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { idToken } = req.body;
+    const result = await authService.googleLogin(idToken);
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+}
+
 export async function logout(_req: Request, res: Response) {
   // Stateless JWT - client discards the token
   res.json({ success: true });
