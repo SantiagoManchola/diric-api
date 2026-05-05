@@ -143,10 +143,12 @@ model Event {
   location              String?
   description           String
   entity_name           String?
+  entity_website        String?
   entity_sector         EntitySector?
   entity_contact_name   String?
   entity_contact_email  String?
   entity_contact_phone  String?
+  entity_contact_role   String?
   event_development     String?
   activity_details      String?
   results_summary       String?
@@ -160,10 +162,12 @@ model Event {
   encargado_id          Int
   created_at            DateTime        @default(now())
 
-  project    Project         @relation(fields: [project_id], references: [id], onDelete: Cascade)
-  creator    User            @relation("EventCreator", fields: [created_by], references: [id])
-  encargado  User            @relation("EventEncargado", fields: [encargado_id], references: [id])
-  attendees  EventAttendee[]
+  project      Project           @relation(fields: [project_id], references: [id], onDelete: Cascade)
+  creator      User              @relation("EventCreator", fields: [created_by], references: [id])
+  encargado    User              @relation("EventEncargado", fields: [encargado_id], references: [id])
+  attendees    EventAttendee[]
+  images       EventImage[]
+  pdf_versions EventPdfVersion[]
 
   @@map("events")
 }
@@ -180,4 +184,32 @@ model EventAttendee {
   user  User  @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@map("event_attendees")
+}
+
+model EventImage {
+  id          Int      @id @default(autoincrement())
+  event_id    Int
+  r2_key      String
+  url         String
+  filename    String
+  mime_type   String   @default("image/jpeg")
+  order_idx   Int      @default(0)
+  uploaded_at DateTime @default(now())
+
+  event Event @relation(fields: [event_id], references: [id], onDelete: Cascade)
+
+  @@map("event_images")
+}
+
+model EventPdfVersion {
+  id           Int      @id @default(autoincrement())
+  event_id     Int
+  version      Int
+  r2_key       String
+  url          String
+  generated_at DateTime @default(now())
+
+  event Event @relation(fields: [event_id], references: [id], onDelete: Cascade)
+
+  @@map("event_pdf_versions")
 }

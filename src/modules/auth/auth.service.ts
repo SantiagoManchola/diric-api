@@ -17,7 +17,10 @@ function excludePassword<T extends { password: string }>(user: T) {
 }
 
 function buildSession(
-  user: { id: number; user_roles: { role: { id: number; name: RoleName; description: string } }[] } & Record<string, unknown>,
+  user: {
+    id: number;
+    user_roles: { role: { id: number; name: RoleName; description: string } }[];
+  } & Record<string, unknown>,
 ) {
   const roles = user.user_roles.map((ur) => ur.role);
 
@@ -87,7 +90,10 @@ export async function googleLogin(idToken: string) {
   });
 
   if (!user) {
-    throw new AppError(403, "No tienes acceso al sistema. Contacta al administrador.");
+    throw new AppError(
+      403,
+      "No tienes acceso al sistema. Contacta al administrador.",
+    );
   }
 
   if (!user.active) {

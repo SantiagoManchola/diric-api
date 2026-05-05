@@ -11,7 +11,11 @@ export async function login(req: Request, res: Response, next: NextFunction) {
   }
 }
 
-export async function googleLogin(req: Request, res: Response, next: NextFunction) {
+export async function googleLogin(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) {
   try {
     const { idToken } = req.body;
     const result = await authService.googleLogin(idToken);

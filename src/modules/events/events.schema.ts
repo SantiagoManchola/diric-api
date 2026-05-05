@@ -11,12 +11,14 @@ export const createEventSchema = z.object({
   location: z.string().optional(),
   description: z.string().min(1, "Descripcion requerida"),
   entity_name: z.string().optional(),
+  entity_website: z.string().optional(),
   entity_sector: z
     .enum(["academia", "empresa", "estado", "sociedad"])
     .optional(),
   entity_contact_name: z.string().optional(),
   entity_contact_email: z.string().optional(),
   entity_contact_phone: z.string().optional(),
+  entity_contact_role: z.string().optional(),
   event_development: z.string().optional(),
   activity_details: z.string().optional(),
   results_summary: z.string().optional(),
@@ -38,6 +40,7 @@ export const updateEventSchema = z.object({
   location: z.string().nullable().optional(),
   description: z.string().min(1).optional(),
   entity_name: z.string().nullable().optional(),
+  entity_website: z.string().nullable().optional(),
   entity_sector: z
     .enum(["academia", "empresa", "estado", "sociedad"])
     .nullable()
@@ -45,6 +48,7 @@ export const updateEventSchema = z.object({
   entity_contact_name: z.string().nullable().optional(),
   entity_contact_email: z.string().nullable().optional(),
   entity_contact_phone: z.string().nullable().optional(),
+  entity_contact_role: z.string().nullable().optional(),
   event_development: z.string().nullable().optional(),
   activity_details: z.string().nullable().optional(),
   results_summary: z.string().nullable().optional(),
