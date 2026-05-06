@@ -145,10 +145,10 @@ model Event {
   entity_name           String?
   entity_website        String?
   entity_sector         EntitySector?
-  entity_contact_name   String?
-  entity_contact_email  String?
-  entity_contact_phone  String?
-  entity_contact_role   String?
+  anfitrion_name        String?
+  anfitrion_email       String?
+  anfitrion_phone       String?
+  anfitrion_role        String?
   event_development     String?
   activity_details      String?
   results_summary       String?
@@ -166,10 +166,25 @@ model Event {
   creator      User              @relation("EventCreator", fields: [created_by], references: [id])
   encargado    User              @relation("EventEncargado", fields: [encargado_id], references: [id])
   attendees    EventAttendee[]
+  visitors     EventVisitor[]
   images       EventImage[]
   pdf_versions EventPdfVersion[]
 
   @@map("events")
+}
+
+model EventVisitor {
+  id        Int      @id @default(autoincrement())
+  event_id  Int
+  name      String
+  phone     String   @default("")
+  email     String   @default("")
+  role      String   @default("")
+  order_idx Int      @default(0)
+
+  event Event @relation(fields: [event_id], references: [id], onDelete: Cascade)
+
+  @@map("event_visitors")
 }
 
 model EventAttendee {

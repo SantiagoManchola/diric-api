@@ -18,6 +18,7 @@ const eventInclude = {
   creator: { select: { id: true, name: true, email: true, phone: true } },
   encargado: { select: { id: true, name: true, email: true, phone: true } },
   attendees: { include: { user: { select: safeUserSelect } } },
+  visitors: { orderBy: { order_idx: "asc" as const } },
   images: { orderBy: { order_idx: "asc" as const } },
   pdf_versions: { orderBy: { version: "asc" as const } },
 };
@@ -115,19 +116,34 @@ export async function getById(id: number) {
 }
 
 export async function create(data: any, callerUserId: number) {
+  const { visitors, ...eventData } = data;
+
   const project = await prisma.project.findUnique({
-    where: { id: data.project_id },
+    where: { id: eventData.project_id },
   });
   if (!project) throw new AppError(404, "Proyecto no encontrado");
 
   const event = await prisma.event.create({
     data: {
-      ...data,
-      start_datetime: new Date(data.start_datetime),
-      end_datetime: new Date(data.end_datetime),
+      ...eventData,
+      start_datetime: new Date(eventData.start_datetime),
+      end_datetime: new Date(eventData.end_datetime),
       created_by: callerUserId,
     },
   });
+
+  if (visitors && visitors.length > 0) {
+    await prisma.eventVisitor.createMany({
+      data: visitors.map((v: any, idx: number) => ({
+        event_id: event.id,
+        name: v.name,
+        phone: v.phone || "",
+        email: v.email || "",
+        role: v.role || "",
+        order_idx: idx,
+      })),
+    });
+  }
 
   // Auto-generate PDF in background (don't fail if PDF fails)
   generateAndStorePdf(event.id).catch((err) =>
@@ -141,15 +157,32 @@ export async function update(id: number, data: any) {
   const event = await prisma.event.findUnique({ where: { id } });
   if (!event) throw new AppError(404, "Evento no encontrado");
 
-  const updateData = { ...data };
-  if (data.start_datetime)
-    updateData.start_datetime = new Date(data.start_datetime);
-  if (data.end_datetime) updateData.end_datetime = new Date(data.end_datetime);
+  const { visitors, ...updateData } = data;
+  if (updateData.start_datetime)
+    updateData.start_datetime = new Date(updateData.start_datetime);
+  if (updateData.end_datetime)
+    updateData.end_datetime = new Date(updateData.end_datetime);
 
   const updated = await prisma.event.update({
     where: { id },
     data: updateData,
   });
+
+  if (visitors !== undefined) {
+    await prisma.eventVisitor.deleteMany({ where: { event_id: id } });
+    if (visitors.length > 0) {
+      await prisma.eventVisitor.createMany({
+        data: visitors.map((v: any, idx: number) => ({
+          event_id: id,
+          name: v.name,
+          phone: v.phone || "",
+          email: v.email || "",
+          role: v.role || "",
+          order_idx: idx,
+        })),
+      });
+    }
+  }
 
   // Auto-generate new PDF version
   generateAndStorePdf(id).catch((err) =>

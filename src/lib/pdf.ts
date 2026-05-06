@@ -13,10 +13,10 @@ interface EventForPdf {
   entity_name: string | null;
   entity_website: string | null;
   entity_sector: string | null;
-  entity_contact_name: string | null;
-  entity_contact_email: string | null;
-  entity_contact_phone: string | null;
-  entity_contact_role: string | null;
+  anfitrion_name: string | null;
+  anfitrion_email: string | null;
+  anfitrion_phone: string | null;
+  anfitrion_role: string | null;
   event_development: string | null;
   activity_details: string | null;
   results_summary: string | null;
@@ -28,8 +28,11 @@ interface EventForPdf {
   end_datetime: Date;
   creator: { name: string; email: string };
   encargado: { name: string; email: string };
-  attendees: Array<{
-    user: { name: string; phone: string; email: string };
+  visitors: Array<{
+    name: string;
+    phone: string;
+    email: string;
+    role: string;
   }>;
   images: Array<{
     url: string;
@@ -225,6 +228,26 @@ function eventTypeLabel(type: string): string {
   return labels[type] ?? type;
 }
 
+function sectorLabel(sector: string | null): string {
+  const labels: Record<string, string> = {
+    academia: "Academia",
+    empresa: "Empresa",
+    estado: "Estado",
+    sociedad: "Sociedad Civil",
+  };
+  return sector ? (labels[sector] ?? sector) : "-";
+}
+
+/** Split a pipe-delimited text into trimmed items. Returns ["-"] if empty. */
+function splitPipe(text: string | null | undefined): string[] {
+  if (!text?.trim()) return ["-"];
+  const items = text
+    .split("|")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  return items.length > 0 ? items : ["-"];
+}
+
 // ── Section renderers ─────────────────────────────────────────────────────────
 
 function renderDocumentHeader(
@@ -244,13 +267,6 @@ function renderDocumentHeader(
     .restore();
   y += 6;
 
-  // Form code right-aligned
-  doc
-    .font("Helvetica-Bold")
-    .fontSize(9)
-    .fillColor("#1f4e79")
-    .text("EX-FO-10", MARGIN, y, { width: cw, align: "right" });
-
   // Main title
   doc
     .font("Helvetica-Bold")
@@ -261,19 +277,6 @@ function renderDocumentHeader(
       align: "center",
     });
   y += 22;
-
-  // Subtitle / description
-  doc
-    .font("Helvetica")
-    .fontSize(9)
-    .fillColor("#444444")
-    .text(
-      "Vinculan el potencial desarrollo de actividades de investigación, creación, cooperación y proyección social.",
-      MARGIN,
-      y,
-      { width: cw, align: "center" },
-    );
-  y += 14;
 
   // Event type chip
   doc.save().rect(MARGIN, y, cw, 18).fillColor("#1f4e79").fill().restore();
@@ -303,12 +306,64 @@ function renderGeneralidades(
     .text("Generalidades", MARGIN, y);
   y += 16;
 
-  const attendeeRows: Cell[][] = event.attendees.map((a) => [
-    { text: a.user.name },
-    { text: a.user.phone || "-" },
-    { text: a.user.email || "-" },
-    { text: "-" },
-  ]);
+  const dateStr = `${event.location || "-"}  ·  ${formatDate(event.start_datetime)} ${event.start_datetime.toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" })} – ${event.end_datetime.toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" })}`;
+
+  // Website + sector rows (conditional)
+  const websiteSectorRows: Cell[][] = [];
+  if (event.entity_website) {
+    // Website row
+    websiteSectorRows.push([
+      { text: "Sitio web - Organización", isHeader: true, align: "center" },
+      {
+        text: "Lugar y fecha de la visita",
+        isHeader: true,
+        colspan: 3,
+        align: "center",
+      },
+    ]);
+    websiteSectorRows.push([
+      { text: event.entity_website },
+      { text: dateStr, colspan: 3 },
+    ]);
+    // Sector row
+    websiteSectorRows.push([
+      {
+        text: "Sector de la entidad",
+        isHeader: true,
+        colspan: 4,
+        align: "center",
+      },
+    ]);
+    websiteSectorRows.push([
+      { text: sectorLabel(event.entity_sector), colspan: 4 },
+    ]);
+  } else {
+    // Sector takes the website's column, date still shown
+    websiteSectorRows.push([
+      { text: "Sector de la entidad", isHeader: true, align: "center" },
+      {
+        text: "Lugar y fecha de la visita",
+        isHeader: true,
+        colspan: 3,
+        align: "center",
+      },
+    ]);
+    websiteSectorRows.push([
+      { text: sectorLabel(event.entity_sector) },
+      { text: dateStr, colspan: 3 },
+    ]);
+  }
+
+  // Visitor rows
+  const visitorRows: Cell[][] =
+    event.visitors.length > 0
+      ? event.visitors.map((v) => [
+          { text: v.name || "-" },
+          { text: v.phone || "-" },
+          { text: v.email || "-" },
+          { text: v.role || "-" },
+        ])
+      : [[{ text: "-" }, { text: "-" }, { text: "-" }, { text: "-" }]];
 
   const rows: Cell[][] = [
     // Company row
@@ -322,37 +377,21 @@ function renderGeneralidades(
       },
     ],
     [{ text: event.entity_name || "-", colspan: 4 }],
-    // Website / Date headers
-    [
-      { text: "Sitio web - Organización", isHeader: true, align: "center" },
-      {
-        text: "Lugar y fecha de la visita",
-        isHeader: true,
-        colspan: 3,
-        align: "center",
-      },
-    ],
-    // Website / Date values
-    [
-      { text: event.entity_website || "-" },
-      {
-        text: `${event.location || "-"}  ·  ${formatDate(event.start_datetime)} ${event.start_datetime.toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" })} – ${event.end_datetime.toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" })}`,
-        colspan: 3,
-      },
-    ],
-    // Host headers
+    // Website / sector / date rows
+    ...websiteSectorRows,
+    // Anfitrion headers
     [
       { text: "Nombre anfitrión(s)", isHeader: true, align: "center" },
       { text: "Celular", isHeader: true, align: "center" },
       { text: "Correo-e", isHeader: true, align: "center" },
       { text: "Rol", isHeader: true, align: "center" },
     ],
-    // Host values
+    // Anfitrion values
     [
-      { text: event.entity_contact_name || "-" },
-      { text: event.entity_contact_phone || "-" },
-      { text: event.entity_contact_email || "-" },
-      { text: event.entity_contact_role || "-" },
+      { text: event.anfitrion_name || "-" },
+      { text: event.anfitrion_phone || "-" },
+      { text: event.anfitrion_email || "-" },
+      { text: event.anfitrion_role || "-" },
     ],
     // Visitor headers
     [
@@ -361,10 +400,8 @@ function renderGeneralidades(
       { text: "Correo-e", isHeader: true, align: "center" },
       { text: "Rol", isHeader: true, align: "center" },
     ],
-    // Visitors (attendees)
-    ...(attendeeRows.length > 0
-      ? attendeeRows
-      : [[{ text: "-" }, { text: "-" }, { text: "-" }, { text: "-" }]]),
+    // Visitors
+    ...visitorRows,
     // Purpose
     [
       {
@@ -403,15 +440,21 @@ function renderDesarrollo(
     .text("Desarrollo de la Visita", MARGIN, y);
   y += 16;
 
+  const actItems = splitPipe(event.activity_details);
+  const devItems = splitPipe(event.event_development);
+  const maxLen = Math.max(actItems.length, devItems.length);
+
+  const dataRows: Cell[][] = Array.from({ length: maxLen }, (_, i) => [
+    { text: actItems[i] ?? "" },
+    { text: devItems[i] ?? "" },
+  ]);
+
   const rows: Cell[][] = [
     [
       { text: "Actividades:", isHeader: true, bold: true, align: "center" },
       { text: "Detalle", isHeader: true, bold: true, align: "center" },
     ],
-    [
-      { text: event.activity_details || "-" },
-      { text: event.event_development || "-" },
-    ],
+    ...dataRows,
   ];
 
   return renderRows(doc, rows, COL2, y);
@@ -530,31 +573,22 @@ function renderResultados(
     .text("Resultados Obtenidos", MARGIN, y);
   y += 16;
 
+  const items = splitPipe(event.results_summary);
+
   const rows: Cell[][] = [
     [
-      { text: "Tipo:", isHeader: true, bold: true, align: "center" },
-      { text: "Detalle", isHeader: true, bold: true, align: "center" },
+      {
+        text: "Resultados",
+        isHeader: true,
+        bold: true,
+        align: "center",
+        colspan: 1,
+      },
     ],
-    [{ text: event.results_summary || "-", colspan: 2 }],
+    ...items.map((item) => [{ text: item, colspan: 1 }]),
   ];
 
-  y = renderRows(doc, rows, COL2, y);
-
-  // Types legend
-  y += 4;
-  doc
-    .font("Helvetica")
-    .fontSize(8)
-    .fillColor("#555555")
-    .text(
-      "Tipos: Ext: Extensión  ·  Con: Consultoría  ·  Inv: Investigación  ·  Tec: Servicios Técnico/Tecnológico  ·  For: Formación a la medida  ·  Div: Divulgativo  ·  Ped: Pedagógico  ·  Soc: Social",
-      MARGIN,
-      y,
-      { width: contentWidth(doc) },
-    );
-  y += 14;
-
-  return y;
+  return renderRows(doc, rows, [1], y);
 }
 
 function renderCompromisos(
@@ -570,16 +604,22 @@ function renderCompromisos(
     .text("Compromisos", MARGIN, y);
   y += 16;
 
+  const items = splitPipe(event.agreements);
+
   const rows: Cell[][] = [
     [
-      { text: "Detalle", isHeader: true, align: "center" },
-      { text: "Responsable", isHeader: true, align: "center" },
-      { text: "Fecha", isHeader: true, align: "center" },
+      {
+        text: "Compromisos",
+        isHeader: true,
+        bold: true,
+        align: "center",
+        colspan: 1,
+      },
     ],
-    [{ text: event.agreements || "-", colspan: 3 }],
+    ...items.map((item) => [{ text: item, colspan: 1 }]),
   ];
 
-  return renderRows(doc, rows, COL3, y);
+  return renderRows(doc, rows, [1], y);
 }
 
 function renderConclusions(
@@ -597,7 +637,8 @@ function renderConclusions(
     .text("Conclusiones", MARGIN, y);
   y += 16;
 
-  const rows: Cell[][] = [[{ text: event.conclusions, colspan: 1 }]];
+  const items = splitPipe(event.conclusions);
+  const rows: Cell[][] = [...items.map((item) => [{ text: item, colspan: 1 }])];
   return renderRows(doc, rows, [1], y);
 }
 
@@ -646,10 +687,10 @@ export async function generateEventPDF(event: EventForPdf): Promise<Buffer> {
       let y = renderDocumentHeader(doc, event);
       y = renderGeneralidades(doc, event, y);
       y = renderDesarrollo(doc, event, y);
-      y = await renderMemoriaVisual(doc, event.images, y);
       y = renderResultados(doc, event, y);
       y = renderCompromisos(doc, event, y);
-      renderConclusions(doc, event, y);
+      y = renderConclusions(doc, event, y);
+      y = await renderMemoriaVisual(doc, event.images, y);
 
       // Add footer to every page
       const totalPages = (doc as any).bufferedPageRange().count;

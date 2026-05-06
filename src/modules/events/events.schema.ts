@@ -1,5 +1,12 @@
 import { z } from "zod";
 
+const visitorSchema = z.object({
+  name: z.string().min(1, "Nombre del visitante requerido"),
+  phone: z.string().default(""),
+  email: z.string().default(""),
+  role: z.string().default(""),
+});
+
 export const createEventSchema = z.object({
   project_id: z.number().int().positive(),
   type: z.enum([
@@ -15,10 +22,11 @@ export const createEventSchema = z.object({
   entity_sector: z
     .enum(["academia", "empresa", "estado", "sociedad"])
     .optional(),
-  entity_contact_name: z.string().optional(),
-  entity_contact_email: z.string().optional(),
-  entity_contact_phone: z.string().optional(),
-  entity_contact_role: z.string().optional(),
+  anfitrion_name: z.string().optional(),
+  anfitrion_email: z.string().optional(),
+  anfitrion_phone: z.string().optional(),
+  anfitrion_role: z.string().optional(),
+  visitors: z.array(visitorSchema).default([]),
   event_development: z.string().optional(),
   activity_details: z.string().optional(),
   results_summary: z.string().optional(),
@@ -45,10 +53,11 @@ export const updateEventSchema = z.object({
     .enum(["academia", "empresa", "estado", "sociedad"])
     .nullable()
     .optional(),
-  entity_contact_name: z.string().nullable().optional(),
-  entity_contact_email: z.string().nullable().optional(),
-  entity_contact_phone: z.string().nullable().optional(),
-  entity_contact_role: z.string().nullable().optional(),
+  anfitrion_name: z.string().nullable().optional(),
+  anfitrion_email: z.string().nullable().optional(),
+  anfitrion_phone: z.string().nullable().optional(),
+  anfitrion_role: z.string().nullable().optional(),
+  visitors: z.array(visitorSchema).optional(),
   event_development: z.string().nullable().optional(),
   activity_details: z.string().nullable().optional(),
   results_summary: z.string().nullable().optional(),

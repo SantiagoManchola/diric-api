@@ -34,8 +34,7 @@ const options: Options = {
       },
       {
         name: "Event PDFs",
-        description:
-          "Historial de PDFs generados automaticamente por evento (EX-FO-10)",
+        description: "Historial de PDFs generados automaticamente por evento",
       },
     ],
     components: {
@@ -108,17 +107,35 @@ const options: Options = {
               type: "string",
               enum: ["academia", "empresa", "estado", "sociedad"],
             },
-            entity_contact_name: {
+            anfitrion_name: {
               type: "string",
               example: "Luis Fernando Castillo",
             },
-            entity_contact_email: {
+            anfitrion_email: {
               type: "string",
               format: "email",
               example: "contacto@paltolima.com",
             },
-            entity_contact_phone: { type: "string", example: "320 6750649" },
-            entity_contact_role: { type: "string", example: "Presidente" },
+            anfitrion_phone: { type: "string", example: "320 6750649" },
+            anfitrion_role: { type: "string", example: "Presidente" },
+            visitors: {
+              type: "array",
+              description: "Lista de visitantes de la universidad",
+              items: {
+                type: "object",
+                required: ["name"],
+                properties: {
+                  name: { type: "string", example: "Helga Bermeo" },
+                  phone: { type: "string", example: "315 1234567" },
+                  email: {
+                    type: "string",
+                    format: "email",
+                    example: "hbermeo@unibague.edu.co",
+                  },
+                  role: { type: "string", example: "Investigadora" },
+                },
+              },
+            },
             event_development: {
               type: "string",
               example: "Se hizo recorrido de las instalaciones...",
@@ -743,7 +760,7 @@ const options: Options = {
           tags: ["Events"],
           summary: "Crear evento",
           description:
-            "Crea el evento y genera automaticamente el PDF v1 (EX-FO-10) en Cloudflare R2.",
+            "Crea el evento y genera automaticamente el PDF en Cloudflare R2.",
           security: [{ bearerAuth: [] }],
           requestBody: {
             required: true,
