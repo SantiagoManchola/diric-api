@@ -177,6 +177,8 @@ function renderRows(
     y = checkPageBreak(doc, y, rowH);
     drawRow(doc, cells, x, y, abs, rowH);
     y += rowH;
+    // Keep PDFKit's internal cursor in sync to prevent spurious auto-added blank pages
+    (doc as any).y = y;
   }
   return y;
 }
@@ -690,11 +692,22 @@ export async function generateEventPDF(event: EventForPdf): Promise<Buffer> {
       y = renderConclusions(doc, event, y);
       y = await renderMemoriaVisual(doc, event.images, y);
 
-      // Trim trailing blank page: if y is near top of a newly added page
-      // and there is more than one page, the last page has no real content.
-      const pageBuffer = (doc as any)._pageBuffer as any[];
-      if (pageBuffer && pageBuffer.length > 1 && y <= MARGIN + 20) {
-        pageBuffer.pop();
+      // Remove trailing blank pages.
+      // PDFKit may auto-create a page when doc.y drifts past the page boundary.
+      // We detect this by switching to the last page and checking if doc.y is
+      // still at (or very near) the top margin — meaning nothing real was drawn.
+      {
+        const bufRange = doc.bufferedPageRange();
+        if (bufRange.count > 1) {
+          const lastIdx = bufRange.start + bufRange.count - 1;
+          doc.switchToPage(lastIdx);
+          const topMargin = (doc.page as any).margins?.top ?? MARGIN;
+          if ((doc as any).y <= topMargin + 6) {
+            // Page is blank — remove it from the internal buffer
+            const buf = (doc as any)._pageBuffer as any[] | undefined;
+            if (Array.isArray(buf) && buf.length > 1) buf.pop();
+          }
+        }
       }
 
       // Add footer to every page

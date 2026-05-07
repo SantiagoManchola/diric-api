@@ -12,6 +12,11 @@ const router = Router();
 
 router.use(authenticate);
 
+router.get(
+  "/by-academic-unit",
+  authorize("admin", "academicUnit"),
+  ctrl.getByAcademicUnit,
+);
 router.get("/", authorize("admin", "academicUnit", "profesor"), ctrl.getAll);
 router.get(
   "/:id",

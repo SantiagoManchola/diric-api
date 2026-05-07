@@ -126,3 +126,43 @@ export async function removeAssignment(assignmentId: number) {
     throw new AppError(404, "Asignacion no encontrada");
   }
 }
+
+// Stats
+export async function getByAcademicUnit() {
+  const academicUnits = await prisma.user.findMany({
+    where: {
+      user_roles: { some: { role: { name: "academicUnit" } } },
+      active: true,
+    },
+    select: {
+      id: true,
+      name: true,
+      academic_unit_professors: {
+        select: {
+          professor: {
+            select: {
+              project_assignments: {
+                select: { project_id: true },
+              },
+            },
+          },
+        },
+      },
+    },
+    orderBy: { name: "asc" },
+  });
+
+  return academicUnits.map((au) => {
+    const projectIds = new Set<number>();
+    for (const pau of au.academic_unit_professors) {
+      for (const assignment of pau.professor.project_assignments) {
+        projectIds.add(assignment.project_id);
+      }
+    }
+    return {
+      academic_unit_id: au.id,
+      academic_unit_name: au.name,
+      project_count: projectIds.size,
+    };
+  });
+}

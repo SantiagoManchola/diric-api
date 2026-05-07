@@ -649,6 +649,39 @@ const options: Options = {
           },
         },
       },
+      "/api/projects/by-academic-unit": {
+        get: {
+          tags: ["Projects"],
+          summary: "Proyectos por unidad académica",
+          description:
+            "Retorna la cantidad de proyectos distintos asociados a cada unidad académica. Útil para gráficos de barras.",
+          security: [{ bearerAuth: [] }],
+          responses: {
+            "200": {
+              description: "Listado con conteo de proyectos por unidad",
+              content: {
+                "application/json": {
+                  schema: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      properties: {
+                        academic_unit_id: { type: "integer", example: 3 },
+                        academic_unit_name: {
+                          type: "string",
+                          example: "Ingeniería de Sistemas",
+                        },
+                        project_count: { type: "integer", example: 7 },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+            "401": { description: "No autenticado" },
+          },
+        },
+      },
       "/api/projects": {
         get: {
           tags: ["Projects"],

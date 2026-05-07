@@ -77,3 +77,16 @@ export async function removeAssignment(
     next(err);
   }
 }
+
+export async function getByAcademicUnit(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) {
+  try {
+    const result = await service.getByAcademicUnit();
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+}
