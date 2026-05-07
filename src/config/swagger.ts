@@ -136,23 +136,21 @@ const options: Options = {
                 },
               },
             },
-            event_development: {
-              type: "string",
-              example: "Se hizo recorrido de las instalaciones...",
+            activities: {
+              type: "array",
+              description: "Actividades desarrolladas (actividad + detalle)",
+              items: { $ref: "#/components/schemas/EventActivity" },
             },
-            activity_details: {
-              type: "string",
-              example: "Reunión con actores",
+            results: {
+              type: "array",
+              description: "Resultados obtenidos (tipo + detalle)",
+              items: { $ref: "#/components/schemas/EventResult" },
             },
-            results_summary: {
-              type: "string",
-              example:
-                "Consultoría – Oportunidad de consultoría para el proyecto de inversión...",
-            },
-            agreements: {
-              type: "string",
-              example:
-                "Envío de cotización por parte de Unibagué – Responsable: Helga Bermeo – Fecha: 04/02/2026",
+            commitments: {
+              type: "array",
+              description:
+                "Compromisos adquiridos (detalle + responsable + fecha)",
+              items: { $ref: "#/components/schemas/EventCommitment" },
             },
             visit_purpose: {
               type: "string",
@@ -175,6 +173,55 @@ const options: Options = {
               example: "2026-01-27T12:00:00Z",
             },
             encargado_id: { type: "integer", example: 2 },
+          },
+        },
+        EventActivity: {
+          type: "object",
+          required: ["activity"],
+          properties: {
+            activity: {
+              type: "string",
+              example: "Recorrido por instalaciones",
+            },
+            detail: {
+              type: "string",
+              example: "Se visitaron las áreas de producción y clasificación",
+            },
+          },
+        },
+        EventResult: {
+          type: "object",
+          required: ["type"],
+          properties: {
+            type: {
+              type: "string",
+              example: "Consultoría",
+              description:
+                "Tipo de resultado (ej: Consultoría, Investigación, Extensión...)",
+            },
+            detail: {
+              type: "string",
+              example:
+                "Oportunidad de consultoría para el proyecto de inversión",
+            },
+          },
+        },
+        EventCommitment: {
+          type: "object",
+          required: ["detail"],
+          properties: {
+            detail: {
+              type: "string",
+              example: "Envío de cotización por parte de Unibagué",
+            },
+            responsible: {
+              type: "string",
+              example: "Helga Bermeo",
+            },
+            date_text: {
+              type: "string",
+              example: "04/02/2026",
+            },
           },
         },
         EventImage: {

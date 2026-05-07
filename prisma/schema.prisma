@@ -149,10 +149,6 @@ model Event {
   anfitrion_email       String?
   anfitrion_phone       String?
   anfitrion_role        String?
-  event_development     String?
-  activity_details      String?
-  results_summary       String?
-  agreements            String?
   visit_purpose         String?
   visit_justification   String?
   conclusions           String          @default("")
@@ -167,10 +163,50 @@ model Event {
   encargado    User              @relation("EventEncargado", fields: [encargado_id], references: [id])
   attendees    EventAttendee[]
   visitors     EventVisitor[]
+  activities   EventActivity[]
+  results      EventResult[]
+  commitments  EventCommitment[]
   images       EventImage[]
   pdf_versions EventPdfVersion[]
 
   @@map("events")
+}
+
+model EventActivity {
+  id        Int    @id @default(autoincrement())
+  event_id  Int
+  activity  String
+  detail    String @default("")
+  order_idx Int    @default(0)
+
+  event Event @relation(fields: [event_id], references: [id], onDelete: Cascade)
+
+  @@map("event_activities")
+}
+
+model EventResult {
+  id        Int    @id @default(autoincrement())
+  event_id  Int
+  type      String
+  detail    String @default("")
+  order_idx Int    @default(0)
+
+  event Event @relation(fields: [event_id], references: [id], onDelete: Cascade)
+
+  @@map("event_results")
+}
+
+model EventCommitment {
+  id          Int    @id @default(autoincrement())
+  event_id    Int
+  detail      String
+  responsible String @default("")
+  date_text   String @default("")
+  order_idx   Int    @default(0)
+
+  event Event @relation(fields: [event_id], references: [id], onDelete: Cascade)
+
+  @@map("event_commitments")
 }
 
 model EventVisitor {

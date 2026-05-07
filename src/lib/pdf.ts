@@ -17,10 +17,6 @@ interface EventForPdf {
   anfitrion_email: string | null;
   anfitrion_phone: string | null;
   anfitrion_role: string | null;
-  event_development: string | null;
-  activity_details: string | null;
-  results_summary: string | null;
-  agreements: string | null;
   visit_purpose: string | null;
   visit_justification: string | null;
   conclusions: string;
@@ -33,6 +29,13 @@ interface EventForPdf {
     phone: string;
     email: string;
     role: string;
+  }>;
+  activities: Array<{ activity: string; detail: string }>;
+  results: Array<{ type: string; detail: string }>;
+  commitments: Array<{
+    detail: string;
+    responsible: string;
+    date_text: string;
   }>;
   images: Array<{
     url: string;
@@ -233,7 +236,7 @@ function sectorLabel(sector: string | null): string {
     academia: "Academia",
     empresa: "Empresa",
     estado: "Estado",
-    sociedad: "Sociedad Civil",
+    sociedad: "Sociedad",
   };
   return sector ? (labels[sector] ?? sector) : "-";
 }
@@ -440,18 +443,17 @@ function renderDesarrollo(
     .text("Desarrollo de la Visita", MARGIN, y);
   y += 16;
 
-  const actItems = splitPipe(event.activity_details);
-  const devItems = splitPipe(event.event_development);
-  const maxLen = Math.max(actItems.length, devItems.length);
-
-  const dataRows: Cell[][] = Array.from({ length: maxLen }, (_, i) => [
-    { text: actItems[i] ?? "" },
-    { text: devItems[i] ?? "" },
-  ]);
+  const dataRows: Cell[][] =
+    event.activities.length > 0
+      ? event.activities.map((a) => [
+          { text: a.activity || "-" },
+          { text: a.detail || "-" },
+        ])
+      : [[{ text: "-" }, { text: "-" }]];
 
   const rows: Cell[][] = [
     [
-      { text: "Actividades:", isHeader: true, bold: true, align: "center" },
+      { text: "Actividad", isHeader: true, bold: true, align: "center" },
       { text: "Detalle", isHeader: true, bold: true, align: "center" },
     ],
     ...dataRows,
@@ -541,20 +543,12 @@ async function renderMemoriaVisual(
           });
       }
 
-      // Caption
-      doc
-        .font("Helvetica")
-        .fontSize(8)
-        .fillColor("#555555")
-        .text(rowImages[j].filename, ix, y + rowMaxH + 2, {
-          width: imgW,
-          align: "center",
-        });
+      // Caption removed intentionally
 
       ix += imgW + GAP;
     }
 
-    y += rowMaxH + 18; // height + caption + gap
+    y += rowMaxH + 8; // height + gap (no caption)
   }
 
   return y;
@@ -573,22 +567,23 @@ function renderResultados(
     .text("Resultados Obtenidos", MARGIN, y);
   y += 16;
 
-  const items = splitPipe(event.results_summary);
+  const dataRows: Cell[][] =
+    event.results.length > 0
+      ? event.results.map((r) => [
+          { text: r.type || "-" },
+          { text: r.detail || "-" },
+        ])
+      : [[{ text: "-" }, { text: "-" }]];
 
   const rows: Cell[][] = [
     [
-      {
-        text: "Resultados",
-        isHeader: true,
-        bold: true,
-        align: "center",
-        colspan: 1,
-      },
+      { text: "Tipo", isHeader: true, bold: true, align: "center" },
+      { text: "Detalle", isHeader: true, bold: true, align: "center" },
     ],
-    ...items.map((item) => [{ text: item, colspan: 1 }]),
+    ...dataRows,
   ];
 
-  return renderRows(doc, rows, [1], y);
+  return renderRows(doc, rows, COL2, y);
 }
 
 function renderCompromisos(
@@ -604,22 +599,25 @@ function renderCompromisos(
     .text("Compromisos", MARGIN, y);
   y += 16;
 
-  const items = splitPipe(event.agreements);
+  const dataRows: Cell[][] =
+    event.commitments.length > 0
+      ? event.commitments.map((c) => [
+          { text: c.detail || "-" },
+          { text: c.responsible || "-" },
+          { text: c.date_text || "-" },
+        ])
+      : [[{ text: "-" }, { text: "-" }, { text: "-" }]];
 
   const rows: Cell[][] = [
     [
-      {
-        text: "Compromisos",
-        isHeader: true,
-        bold: true,
-        align: "center",
-        colspan: 1,
-      },
+      { text: "Detalle", isHeader: true, align: "center" },
+      { text: "Responsable", isHeader: true, align: "center" },
+      { text: "Fecha", isHeader: true, align: "center" },
     ],
-    ...items.map((item) => [{ text: item, colspan: 1 }]),
+    ...dataRows,
   ];
 
-  return renderRows(doc, rows, [1], y);
+  return renderRows(doc, rows, COL3, y);
 }
 
 function renderConclusions(
@@ -691,6 +689,13 @@ export async function generateEventPDF(event: EventForPdf): Promise<Buffer> {
       y = renderCompromisos(doc, event, y);
       y = renderConclusions(doc, event, y);
       y = await renderMemoriaVisual(doc, event.images, y);
+
+      // Trim trailing blank page: if y is near top of a newly added page
+      // and there is more than one page, the last page has no real content.
+      const pageBuffer = (doc as any)._pageBuffer as any[];
+      if (pageBuffer && pageBuffer.length > 1 && y <= MARGIN + 20) {
+        pageBuffer.pop();
+      }
 
       // Add footer to every page
       const totalPages = (doc as any).bufferedPageRange().count;

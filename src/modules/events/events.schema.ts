@@ -7,6 +7,22 @@ const visitorSchema = z.object({
   role: z.string().default(""),
 });
 
+const activitySchema = z.object({
+  activity: z.string().min(1, "Actividad requerida"),
+  detail: z.string().default(""),
+});
+
+const resultSchema = z.object({
+  type: z.string().min(1, "Tipo requerido"),
+  detail: z.string().default(""),
+});
+
+const commitmentSchema = z.object({
+  detail: z.string().min(1, "Detalle requerido"),
+  responsible: z.string().default(""),
+  date_text: z.string().default(""),
+});
+
 export const createEventSchema = z.object({
   project_id: z.number().int().positive(),
   type: z.enum([
@@ -27,10 +43,9 @@ export const createEventSchema = z.object({
   anfitrion_phone: z.string().optional(),
   anfitrion_role: z.string().optional(),
   visitors: z.array(visitorSchema).default([]),
-  event_development: z.string().optional(),
-  activity_details: z.string().optional(),
-  results_summary: z.string().optional(),
-  agreements: z.string().optional(),
+  activities: z.array(activitySchema).default([]),
+  results: z.array(resultSchema).default([]),
+  commitments: z.array(commitmentSchema).default([]),
   visit_purpose: z.string().optional(),
   visit_justification: z.string().optional(),
   conclusions: z.string().default(""),
@@ -58,10 +73,9 @@ export const updateEventSchema = z.object({
   anfitrion_phone: z.string().nullable().optional(),
   anfitrion_role: z.string().nullable().optional(),
   visitors: z.array(visitorSchema).optional(),
-  event_development: z.string().nullable().optional(),
-  activity_details: z.string().nullable().optional(),
-  results_summary: z.string().nullable().optional(),
-  agreements: z.string().nullable().optional(),
+  activities: z.array(activitySchema).optional(),
+  results: z.array(resultSchema).optional(),
+  commitments: z.array(commitmentSchema).optional(),
   visit_purpose: z.string().nullable().optional(),
   visit_justification: z.string().nullable().optional(),
   conclusions: z.string().optional(),

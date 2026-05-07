@@ -19,6 +19,9 @@ const eventInclude = {
   encargado: { select: { id: true, name: true, email: true, phone: true } },
   attendees: { include: { user: { select: safeUserSelect } } },
   visitors: { orderBy: { order_idx: "asc" as const } },
+  activities: { orderBy: { order_idx: "asc" as const } },
+  results: { orderBy: { order_idx: "asc" as const } },
+  commitments: { orderBy: { order_idx: "asc" as const } },
   images: { orderBy: { order_idx: "asc" as const } },
   pdf_versions: { orderBy: { version: "asc" as const } },
 };
@@ -116,7 +119,7 @@ export async function getById(id: number) {
 }
 
 export async function create(data: any, callerUserId: number) {
-  const { visitors, ...eventData } = data;
+  const { visitors, activities, results, commitments, ...eventData } = data;
 
   const project = await prisma.project.findUnique({
     where: { id: eventData.project_id },
@@ -132,7 +135,7 @@ export async function create(data: any, callerUserId: number) {
     },
   });
 
-  if (visitors && visitors.length > 0) {
+  if (visitors?.length > 0) {
     await prisma.eventVisitor.createMany({
       data: visitors.map((v: any, idx: number) => ({
         event_id: event.id,
@@ -140,6 +143,40 @@ export async function create(data: any, callerUserId: number) {
         phone: v.phone || "",
         email: v.email || "",
         role: v.role || "",
+        order_idx: idx,
+      })),
+    });
+  }
+
+  if (activities?.length > 0) {
+    await prisma.eventActivity.createMany({
+      data: activities.map((a: any, idx: number) => ({
+        event_id: event.id,
+        activity: a.activity,
+        detail: a.detail || "",
+        order_idx: idx,
+      })),
+    });
+  }
+
+  if (results?.length > 0) {
+    await prisma.eventResult.createMany({
+      data: results.map((r: any, idx: number) => ({
+        event_id: event.id,
+        type: r.type,
+        detail: r.detail || "",
+        order_idx: idx,
+      })),
+    });
+  }
+
+  if (commitments?.length > 0) {
+    await prisma.eventCommitment.createMany({
+      data: commitments.map((c: any, idx: number) => ({
+        event_id: event.id,
+        detail: c.detail,
+        responsible: c.responsible || "",
+        date_text: c.date_text || "",
         order_idx: idx,
       })),
     });
@@ -157,7 +194,7 @@ export async function update(id: number, data: any) {
   const event = await prisma.event.findUnique({ where: { id } });
   if (!event) throw new AppError(404, "Evento no encontrado");
 
-  const { visitors, ...updateData } = data;
+  const { visitors, activities, results, commitments, ...updateData } = data;
   if (updateData.start_datetime)
     updateData.start_datetime = new Date(updateData.start_datetime);
   if (updateData.end_datetime)
@@ -178,6 +215,49 @@ export async function update(id: number, data: any) {
           phone: v.phone || "",
           email: v.email || "",
           role: v.role || "",
+          order_idx: idx,
+        })),
+      });
+    }
+  }
+
+  if (activities !== undefined) {
+    await prisma.eventActivity.deleteMany({ where: { event_id: id } });
+    if (activities.length > 0) {
+      await prisma.eventActivity.createMany({
+        data: activities.map((a: any, idx: number) => ({
+          event_id: id,
+          activity: a.activity,
+          detail: a.detail || "",
+          order_idx: idx,
+        })),
+      });
+    }
+  }
+
+  if (results !== undefined) {
+    await prisma.eventResult.deleteMany({ where: { event_id: id } });
+    if (results.length > 0) {
+      await prisma.eventResult.createMany({
+        data: results.map((r: any, idx: number) => ({
+          event_id: id,
+          type: r.type,
+          detail: r.detail || "",
+          order_idx: idx,
+        })),
+      });
+    }
+  }
+
+  if (commitments !== undefined) {
+    await prisma.eventCommitment.deleteMany({ where: { event_id: id } });
+    if (commitments.length > 0) {
+      await prisma.eventCommitment.createMany({
+        data: commitments.map((c: any, idx: number) => ({
+          event_id: id,
+          detail: c.detail,
+          responsible: c.responsible || "",
+          date_text: c.date_text || "",
           order_idx: idx,
         })),
       });
