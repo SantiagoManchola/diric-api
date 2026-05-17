@@ -224,6 +224,104 @@ const options: Options = {
             },
           },
         },
+        AcademicUnitRef: {
+          type: "object",
+          properties: {
+            id: { type: "integer", example: 3 },
+            name: { type: "string", example: "Ingeniería de Sistemas" },
+          },
+        },
+        ProjectSummary: {
+          type: "object",
+          properties: {
+            id: { type: "integer", example: 1 },
+            country_id: { type: "integer", example: 1 },
+            title: { type: "string", example: "Consultoría PalTolima" },
+            description: {
+              type: "string",
+              example: "Descripción del proyecto",
+            },
+            status: {
+              type: "string",
+              enum: ["planificado", "en_progreso", "completado", "cancelado"],
+              example: "planificado",
+            },
+            start_date: { type: "string", example: "2026-01-01" },
+            deadline: { type: "string", example: "2026-12-31" },
+            end_date: { type: "string", nullable: true, example: null },
+            created_at: {
+              type: "string",
+              format: "date-time",
+              example: "2026-01-01T00:00:00Z",
+            },
+            academic_units: {
+              type: "array",
+              description: "Unidades académicas asignadas al proyecto",
+              items: { $ref: "#/components/schemas/AcademicUnitRef" },
+            },
+          },
+        },
+        ProjectDetail: {
+          allOf: [
+            { $ref: "#/components/schemas/ProjectSummary" },
+            {
+              type: "object",
+              properties: {
+                country: {
+                  type: "object",
+                  properties: {
+                    id: { type: "integer", example: 1 },
+                    code: { type: "string", example: "CO" },
+                    name: { type: "string", example: "Colombia" },
+                  },
+                },
+                assignments: {
+                  type: "array",
+                  description: "Asignaciones de usuarios al proyecto",
+                  items: {
+                    type: "object",
+                    properties: {
+                      id: { type: "integer", example: 1 },
+                      project_id: { type: "integer", example: 1 },
+                      user_id: { type: "integer", example: 5 },
+                      role_in_project: {
+                        type: "string",
+                        example: "Investigador principal",
+                      },
+                      assigned_at: {
+                        type: "string",
+                        format: "date-time",
+                      },
+                      user: {
+                        type: "object",
+                        properties: {
+                          id: { type: "integer", example: 5 },
+                          name: { type: "string", example: "Carlos Pérez" },
+                          email: {
+                            type: "string",
+                            format: "email",
+                            example: "cperez@unibague.edu.co",
+                          },
+                          phone: { type: "string", example: "310 1234567" },
+                          active: { type: "boolean", example: true },
+                          created_at: {
+                            type: "string",
+                            format: "date-time",
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+                events: {
+                  type: "array",
+                  description: "Eventos asociados al proyecto",
+                  items: { type: "object", additionalProperties: true },
+                },
+              },
+            },
+          ],
+        },
         EventImage: {
           type: "object",
           properties: {
@@ -687,10 +785,37 @@ const options: Options = {
           tags: ["Projects"],
           summary: "Listar proyectos",
           security: [{ bearerAuth: [] }],
+          parameters: [
+            {
+              in: "query",
+              name: "search",
+              schema: { type: "string" },
+              description: "Filtro por título o descripción",
+            },
+          ],
           responses: {
-            "200": { description: "Listado de proyectos" },
+            "200": {
+              description:
+                "Listado de proyectos con unidades académicas asociadas",
+              content: {
+                "application/json": {
+                  schema: {
+                    type: "object",
+                    properties: {
+                      data: {
+                        type: "array",
+                        items: { $ref: "#/components/schemas/ProjectSummary" },
+                      },
+                      total: { type: "integer", example: 10 },
+                    },
+                  },
+                },
+              },
+            },
+            "401": { description: "No autenticado" },
           },
         },
+
         post: {
           tags: ["Projects"],
           summary: "Crear proyecto",
@@ -699,12 +824,61 @@ const options: Options = {
             required: true,
             content: {
               "application/json": {
-                schema: { type: "object", additionalProperties: true },
+                schema: {
+                  type: "object",
+                  required: [
+                    "country_id",
+                    "title",
+                    "description",
+                    "start_date",
+                    "deadline",
+                  ],
+                  properties: {
+                    country_id: { type: "integer", example: 1 },
+                    title: {
+                      type: "string",
+                      example: "Consultor\u00eda PalTolima",
+                    },
+                    description: {
+                      type: "string",
+                      example: "Descripci\u00f3n del proyecto",
+                    },
+                    status: {
+                      type: "string",
+                      enum: [
+                        "planificado",
+                        "en_progreso",
+                        "completado",
+                        "cancelado",
+                      ],
+                      default: "planificado",
+                    },
+                    start_date: { type: "string", example: "2026-01-01" },
+                    deadline: { type: "string", example: "2026-12-31" },
+                    end_date: { type: "string", nullable: true, example: null },
+                    academic_unit_ids: {
+                      type: "array",
+                      description:
+                        "IDs de unidades acad\u00e9micas a asignar al proyecto",
+                      items: { type: "integer", example: 3 },
+                    },
+                  },
+                },
               },
             },
           },
           responses: {
-            "201": { description: "Proyecto creado" },
+            "201": {
+              description: "Proyecto creado",
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/ProjectSummary" },
+                },
+              },
+            },
+            "400": { description: "Datos inv\u00e1lidos" },
+            "401": { description: "No autenticado" },
+            "404": { description: "Pa\u00eds no encontrado" },
           },
         },
       },
@@ -722,7 +896,17 @@ const options: Options = {
             },
           ],
           responses: {
-            "200": { description: "Detalle de proyecto" },
+            "200": {
+              description:
+                "Detalle completo del proyecto con asignaciones y unidades académicas",
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/ProjectDetail" },
+                },
+              },
+            },
+            "401": { description: "No autenticado" },
+            "404": { description: "Proyecto no encontrado" },
           },
         },
         put: {
@@ -741,12 +925,53 @@ const options: Options = {
             required: true,
             content: {
               "application/json": {
-                schema: { type: "object", additionalProperties: true },
+                schema: {
+                  type: "object",
+                  properties: {
+                    country_id: { type: "integer", example: 1 },
+                    title: {
+                      type: "string",
+                      example: "Consultor\u00eda PalTolima",
+                    },
+                    description: {
+                      type: "string",
+                      example: "Descripci\u00f3n del proyecto",
+                    },
+                    status: {
+                      type: "string",
+                      enum: [
+                        "planificado",
+                        "en_progreso",
+                        "completado",
+                        "cancelado",
+                      ],
+                    },
+                    start_date: { type: "string", example: "2026-01-01" },
+                    deadline: { type: "string", example: "2026-12-31" },
+                    end_date: { type: "string", nullable: true, example: null },
+                    academic_unit_ids: {
+                      type: "array",
+                      description:
+                        "Reemplaza las unidades acad\u00e9micas asignadas. Si se env\u00eda vac\u00edo ([]) se eliminan todas.",
+                      items: { type: "integer", example: 3 },
+                    },
+                  },
+                },
               },
             },
           },
           responses: {
-            "200": { description: "Proyecto actualizado" },
+            "200": {
+              description: "Proyecto actualizado",
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/ProjectSummary" },
+                },
+              },
+            },
+            "400": { description: "Datos inv\u00e1lidos" },
+            "401": { description: "No autenticado" },
+            "404": { description: "Proyecto o pa\u00eds no encontrado" },
           },
         },
         delete: {

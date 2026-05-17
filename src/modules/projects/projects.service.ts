@@ -40,10 +40,38 @@ export async function getAll(
     ];
   }
 
-  const [data, total] = await Promise.all([
-    prisma.project.findMany({ where, orderBy: { created_at: "desc" } }),
+  const [projects, total] = await Promise.all([
+    prisma.project.findMany({
+      where,
+      orderBy: { created_at: "desc" },
+      include: {
+        assignments: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                user_roles: {
+                  select: { role: { select: { name: true } } },
+                },
+              },
+            },
+          },
+        },
+      },
+    }),
     prisma.project.count({ where }),
   ]);
+
+  const data = projects.map((p) => {
+    const academic_units = p.assignments
+      .filter((a) =>
+        a.user.user_roles.some((ur) => ur.role.name === "academicUnit"),
+      )
+      .map((a) => ({ id: a.user.id, name: a.user.name }));
+    const { assignments: _, ...rest } = p;
+    return { ...rest, academic_units };
+  });
 
   return { data, total };
 }
@@ -53,13 +81,31 @@ export async function getById(id: number) {
     where: { id },
     include: {
       country: true,
-      assignments: { include: { user: { select: safeUserSelect } } },
+      assignments: {
+        include: {
+          user: {
+            select: {
+              ...safeUserSelect,
+              user_roles: {
+                select: { role: { select: { name: true } } },
+              },
+            },
+          },
+        },
+      },
       events: true,
     },
   });
 
   if (!project) throw new AppError(404, "Proyecto no encontrado");
-  return project;
+
+  const academic_units = project.assignments
+    .filter((a) =>
+      a.user.user_roles.some((ur) => ur.role.name === "academicUnit"),
+    )
+    .map((a) => ({ id: a.user.id, name: a.user.name }));
+
+  return { ...project, academic_units };
 }
 
 export async function create(data: {
@@ -70,13 +116,28 @@ export async function create(data: {
   start_date: string;
   deadline: string;
   end_date?: string | null;
+  academic_unit_ids?: number[];
 }) {
+  const { academic_unit_ids, ...projectData } = data;
+
   const country = await prisma.country.findUnique({
-    where: { id: data.country_id },
+    where: { id: projectData.country_id },
   });
   if (!country) throw new AppError(404, "Pais no encontrado");
 
-  return prisma.project.create({ data });
+  const project = await prisma.project.create({ data: projectData });
+
+  if (academic_unit_ids?.length) {
+    await prisma.projectAssignment.createMany({
+      data: academic_unit_ids.map((user_id) => ({
+        project_id: project.id,
+        user_id,
+        role_in_project: "unidad_academica",
+      })),
+    });
+  }
+
+  return project;
 }
 
 export async function update(id: number, data: any) {
@@ -90,7 +151,36 @@ export async function update(id: number, data: any) {
     if (!country) throw new AppError(404, "Pais no encontrado");
   }
 
-  return prisma.project.update({ where: { id }, data });
+  const { academic_unit_ids, ...projectData } = data;
+
+  const updated = await prisma.project.update({
+    where: { id },
+    data: projectData,
+  });
+
+  if (academic_unit_ids !== undefined) {
+    const existingAUAssignments = await prisma.projectAssignment.findMany({
+      where: {
+        project_id: id,
+        user: { user_roles: { some: { role: { name: "academicUnit" } } } },
+      },
+      select: { id: true },
+    });
+    await prisma.projectAssignment.deleteMany({
+      where: { id: { in: existingAUAssignments.map((a) => a.id) } },
+    });
+    if (academic_unit_ids.length) {
+      await prisma.projectAssignment.createMany({
+        data: academic_unit_ids.map((user_id: number) => ({
+          project_id: id,
+          user_id,
+          role_in_project: "unidad_academica",
+        })),
+      });
+    }
+  }
+
+  return updated;
 }
 
 export async function remove(id: number) {

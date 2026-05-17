@@ -10,6 +10,7 @@ export const createProjectSchema = z.object({
   start_date: z.string().min(1, "Fecha de inicio requerida"),
   deadline: z.string().min(1, "Fecha limite requerida"),
   end_date: z.string().nullable().optional(),
+  academic_unit_ids: z.array(z.number().int().positive()).optional(),
 });
 
 export const updateProjectSchema = z.object({
@@ -22,6 +23,7 @@ export const updateProjectSchema = z.object({
   start_date: z.string().min(1).optional(),
   deadline: z.string().min(1).optional(),
   end_date: z.string().nullable().optional(),
+  academic_unit_ids: z.array(z.number().int().positive()).optional(),
 });
 
 export const createAssignmentSchema = z.object({
